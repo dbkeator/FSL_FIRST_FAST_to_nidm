@@ -9,7 +9,7 @@ from os.path import dirname
 def get_version():
     """Load version only
     """
-    with open(opj(dirname(__file__), 'segstats_jsonld', '__init__.py')) as f:
+    with open(opj(dirname(__file__), 'fsl_seg_to_nidm', '__init__.py')) as f:
         version_lines = list(filter(lambda x: x.startswith('__version__'), f))
     assert (len(version_lines) == 1)
     return version_lines[0].split('=')[1].strip(" '\"\t\n")
@@ -31,13 +31,13 @@ except (ImportError, OSError) as exc:
 
 # Metadata
 setup(
-    name='segstats_jsonld',
+    name='fsl_seg_to_nidm',
     version=version,
-    description='Freesurfer metadata extraction & conversion to jsonld',
+    description='FSL FIRST and FAST segmentation data to NIDM / jsonld',
     long_description=long_description,
     author='David Keator',
     author_email='dbkeator@uci.edu',
-    url='https://github.com/dbkeator/segstats_jsonld',
+    url='https://github.com/dbkeator/fsl_seg_to_nidm',
     packages=PACKAGES,
     install_requires=[
         'numpy',
@@ -51,7 +51,7 @@ setup(
         ]},
     entry_points={
         'console_scripts': [
-            'segstats2nidm=segstats_jsonld.fs_to_nidm:main' # this is where the console entry points are defined
+            'fslsegstats2nidm=fsl_seg_to_nidm.fsl_seg_to_nidm:main' # this is where the console entry points are defined
             ],
     },
     classifiers=[
