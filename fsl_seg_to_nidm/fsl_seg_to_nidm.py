@@ -211,7 +211,7 @@ def add_seg_data(nidmdoc, measure, json_map, subjid, png_file=None, output_file=
                 software_activity = niiri[getUUID()]
                 nidm_graph.add((software_activity,RDF.type,Constants.PROV['Activity']))
                 nidm_graph.add((software_activity,Constants.DCT["description"],Literal("FSL FAST/FIRST segmentation statistics")))
-                fs = Namespace(Constants.FREESURFER)
+                fs = Namespace(Constants.FSL)
 
 
                 #create software agent and associate with software activity
@@ -836,11 +836,11 @@ def main():
         #if user added -jmap parameter
         if args.json_map is not False:
             #read in stats file
-                [header,tableinfo, measures] = read_stats(stats_file)
+                measures = read_fsl_stats(stats_file)
         else:
             # online scraping of InterLex for anatomy CDEs and stats file reading
-                [header, tableinfo, measures,json_map] = remap2json(xlsxfile=join(datapath,'ReproNimCDEs.xlsx'),
-                                 fs_stat_file=stats_file)
+                [measures,json_map] = remap2json(xlsxfile=join(datapath,'ReproNimCDEs.xlsx'),
+                                 fsl_stat_file=stats_file)
 
 
         # for measures we need to create NIDM structures using anatomy mappings
@@ -859,11 +859,11 @@ def main():
             #the subject ID...
             if args.segfile is not None:
                 # WIP: more thought needed for version that works with adding to existing NIDM file versus creating a new NIDM file....
-                add_seg_data(nidmdoc=nidmdoc,measure=measures,header=header, json_map=json_map)
+                add_seg_data(nidmdoc=nidmdoc,measure=measures,header=header, json_map=json_map,subjid=args.subjid)
 
             else:
                 # WIP: more thought needed for version that works with adding to existing NIDM file versus creating a new NIDM file....
-                add_seg_data(nidmdoc=nidmdoc,measure=measures,header=header, json_map=json_map)
+                add_seg_data(nidmdoc=nidmdoc,measure=measures,header=header, json_map=json_map,subjid=args.subjid)
             #serialize NIDM file
             if args.jsonld is not False:
                 with open(join(args.output_dir,output_filename +'.json'),'w') as f:
@@ -885,7 +885,7 @@ def main():
             #associate the brain volume data with this subject id but here we can't make a link between an acquisition
             #entity representing the T1w image because the Freesurfer *.stats file doesn't have the provenance information
             #to verify a specific image was used for these segmentations
-            add_seg_data(nidmdoc=rdf_graph_parse,measure=measures,header=header,json_map=json_map,nidm_graph=rdf_graph_parse,subjid=args.subjid)
+            add_seg_data(nidmdoc=rdf_graph_parse,measure=measures,json_map=json_map,nidm_graph=rdf_graph_parse,subjid=args.subjid)
 
             #serialize NIDM file
             #if args.jsonld is not False:
