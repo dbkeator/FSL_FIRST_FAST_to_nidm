@@ -77,7 +77,7 @@ def url_validator(url):
     except:
         return False
 
-def add_seg_data(nidmdoc, measure, header, json_map, png_file=None, output_file=None, root_act=None, nidm_graph=None,subjid=None):
+def add_seg_data(nidmdoc, measure, json_map, png_file=None, output_file=None, root_act=None, nidm_graph=None,subjid=None):
     '''
     WIP: this function creates a NIDM file of brain volume data and if user supplied a NIDM-E file it will add brain volumes to the
     NIDM-E file for the matching subject ID
@@ -100,14 +100,12 @@ def add_seg_data(nidmdoc, measure, header, json_map, png_file=None, output_file=
         first_row=True
 
         #for each of the header items create a dictionary where namespaces are freesurfer
-        software_activity = nidmdoc.graph.activity(niiri[getUUID()],other_attributes={Constants.NIDM_PROJECT_DESCRIPTION:"Freesurfer segmentation statistics"})
-        for key,value in header.items():
-            software_activity.add_attributes({QualifiedName(provNamespace("fs",Constants.FREESURFER),key):value})
+        software_activity = nidmdoc.graph.activity(niiri[getUUID()],other_attributes={Constants.NIDM_PROJECT_DESCRIPTION:"FSL FAST/FIRST segmentation statistics"})
 
         #create software agent and associate with software activity
         #software_agent = nidmdoc.graph.agent(QualifiedName(provNamespace("niiri",Constants.NIIRI),getUUID()),other_attributes={
         software_agent = nidmdoc.graph.agent(niiri[getUUID()],other_attributes={
-            QualifiedName(provNamespace("Neuroimaging_Analysis_Software",Constants.NIDM_NEUROIMAGING_ANALYSIS_SOFTWARE),""):Constants.FREESURFER ,
+            QualifiedName(provNamespace("Neuroimaging_Analysis_Software",Constants.NIDM_NEUROIMAGING_ANALYSIS_SOFTWARE),""):Constants.FSL ,
             prov.PROV_TYPE:prov.PROV["SoftwareAgent"]} )
         #create qualified association with brain volume computation activity
         nidmdoc.graph.association(activity=software_activity,agent=software_agent,other_attributes={PROV_ROLE:Constants.NIDM_NEUROIMAGING_ANALYSIS_SOFTWARE})
@@ -117,16 +115,16 @@ def add_seg_data(nidmdoc, measure, header, json_map, png_file=None, output_file=
 
         #print(nidmdoc.serializeTurtle())
 
-        with open('measure.json', 'w') as fp:
-            json.dump(measure, fp)
+        # with open('measure.json', 'w') as fp:
+        #    json.dump(measure, fp)
 
-        with open('json_map.json', 'w') as fp:
-            json.dump(json_map, fp)
+        # with open('json_map.json', 'w') as fp:
+        #    json.dump(json_map, fp)
 
 
         #datum_entity=nidmdoc.graph.entity(QualifiedName(provNamespace("niiri",Constants.NIIRI),getUUID()),other_attributes={
         datum_entity=nidmdoc.graph.entity(niiri[getUUID()],other_attributes={
-                    prov.PROV_TYPE:QualifiedName(provNamespace("nidm","http://purl.org/nidash/nidm#"),"FSStatsCollection")})
+                    prov.PROV_TYPE:QualifiedName(provNamespace("nidm","http://purl.org/nidash/nidm#"),"FSLStatsCollection")})
         nidmdoc.graph.wasGeneratedBy(software_activity,datum_entity)
 
         #iterate over measure dictionary where measures are the lines in the FS stats files which start with '# Measure' and
@@ -134,9 +132,14 @@ def add_seg_data(nidmdoc, measure, header, json_map, png_file=None, output_file=
         for measures in measure:
 
             #check if we have a CDE mapping for the anatomical structure referenced in the FS stats file
-            if measures["structure"] in json_map['Anatomy']:
+            # this part handles the case where FSL exports for csf is lowercase but anatomy term from InterLex / UBERON
+            # is upper case (CSF)
+            if measures["structure"].lower() in (name.lower() for name in json_map['Anatomy']):
+                # hack because of the csf -> CSF problem
+                if measures["structure"] == 'csf':
+                    measures["structure"] = 'CSF'
 
-                #for the various fields in the FS stats file row starting with '# Measure'...
+                # for the various keys in the FSL stats file
                 for items in measures["items"]:
                     # if the
                     if items['name'] in json_map['Measures'].keys():
@@ -193,7 +196,6 @@ def add_seg_data(nidmdoc, measure, header, json_map, png_file=None, output_file=
                 #entity representing the T1w image because the Freesurfer *.stats file doesn't have the provenance information
                 #to verify a specific image was used for these segmentations
 
-                #for each of the header items create a dictionary where namespaces are freesurfer
                 niiri=Namespace("http://iri.nidash.org/")
                 nidm_graph.bind("niiri",niiri)
 
@@ -201,18 +203,16 @@ def add_seg_data(nidmdoc, measure, header, json_map, png_file=None, output_file=
 
                 software_activity = niiri[getUUID()]
                 nidm_graph.add((software_activity,RDF.type,Constants.PROV['Activity']))
-                nidm_graph.add((software_activity,Constants.DCT["description"],Literal("Freesurfer segmentation statistics")))
+                nidm_graph.add((software_activity,Constants.DCT["description"],Literal("FSL FAST/FIRST segmentation statistics")))
                 fs = Namespace(Constants.FREESURFER)
 
-                for key,value in header.items():
-                    nidm_graph.add((software_activity,fs[key],Literal(value)))
 
                 #create software agent and associate with software activity
                 #software_agent = nidmdoc.graph.agent(QualifiedName(provNamespace("niiri",Constants.NIIRI),getUUID()),other_attributes={
                 software_agent = niiri[getUUID()]
                 nidm_graph.add((software_agent,RDF.type,Constants.PROV['Agent']))
                 neuro_soft=Namespace(Constants.NIDM_NEUROIMAGING_ANALYSIS_SOFTWARE)
-                nidm_graph.add((software_agent,Constants.NIDM_NEUROIMAGING_ANALYSIS_SOFTWARE,URIRef(Constants.FREESURFER)))
+                nidm_graph.add((software_agent,Constants.NIDM_NEUROIMAGING_ANALYSIS_SOFTWARE,URIRef(Constants.FSL)))
                 nidm_graph.add((software_agent,RDF.type,Constants.PROV["SoftwareAgent"]))
                 association_bnode = BNode()
                 nidm_graph.add((software_activity,Constants.PROV['qualifiedAssociation'],association_bnode))
@@ -231,7 +231,7 @@ def add_seg_data(nidmdoc, measure, header, json_map, png_file=None, output_file=
                 #add freesurfer data
                 datum_entity=niiri[getUUID()]
                 nidm_graph.add((datum_entity, RDF.type, Constants.PROV['Entity']))
-                nidm_graph.add((datum_entity,RDF.type,Constants.NIDM["FSStatsCollection"]))
+                nidm_graph.add((datum_entity,RDF.type,Constants.NIDM["FSLStatsCollection"]))
                 nidm_graph.add((datum_entity, Constants.PROV['wasGeneratedBy'], software_activity))
 
                 #iterate over measure dictionary where measures are the lines in the FS stats files which start with '# Measure' and
@@ -336,145 +336,6 @@ def add_seg_data(nidmdoc, measure, header, json_map, png_file=None, output_file=
                                 nidm_graph.add((datum_entity,region_entity,Literal(items['value'])))
 
 
-def read_buildstamp(subdir):
-    """
-    if provided with a freesurfer subject directory, check whether the build_stamp.txt file
-    exists, and if so, extract the freesurfer version.
-    :param subdir: path to subject directory, e.g. args.subject_dir
-    """
-    if os.path.exists(subdir):
-        try:
-            with open(subdir + '/scripts/build-stamp.txt', 'r') as f:
-                freesurfer_version = f.readlines()[0]
-        # except a FileNotFound error
-        except OSError as e:
-            freesurfer_version = input(
-                """
-                Could not find a build timestamp in the supplied subject directory.
-                The used freesurfer version can not be extracted. Please enter the
-                version of freesurfer you are using, if available: """
-                or "")
-    return freesurfer_version
-
-
-
-
-
-
-
-
-max_text_len = 1024000
-
-def safe_encode(x, as_literal=True):
-    """Encodes a python value for prov
-"""
-    if x is None:
-        value = "Unknown"
-        if as_literal:
-            return prov.Literal(value, prov.XSD['string'])
-        else:
-            return value
-    try:
-        if isinstance(x, (str, unicode)):
-            if os.path.exists(x):
-                value = 'file://%s%s' % (getfqdn(), x)
-                if not as_literal:
-                    return value
-                try:
-                    return prov.URIRef(value)
-                except AttributeError:
-                    return prov.Literal(value, prov.XSD['anyURI'])
-            else:
-                if len(x) > max_text_len:
-                    value = x[:max_text_len - 13] + ['...Clipped...']
-                else:
-                    value = x
-                if not as_literal:
-                    return value
-                return prov.Literal(value, prov.XSD['string'])
-        if isinstance(x, (int,)):
-            if not as_literal:
-                return x
-            return prov.Literal(int(x), prov.XSD['integer'])
-        if isinstance(x, (float,)):
-            if not as_literal:
-                return x
-            return prov.Literal(x, prov.XSD['float'])
-        if not as_literal:
-            return dumps(x)
-        return prov.Literal(dumps(x), nidm['pickle'])
-    except TypeError as e:
-        value = "Could not encode: " + str(e)
-        if not as_literal:
-            return value
-        return prov.Literal(value, prov.XSD['string'])
-
-
-def read_stats(filename):
-    """Convert stats file to a structure
-"""
-    header = {}
-    tableinfo = {}
-    measures = []
-    rowmeasures = []
-
-    with open(filename, 'rt') as fp:
-        lines = fp.readlines()
-        for line in lines:
-            if line == line[0]:
-                continue
-            #parse commented header
-            if line.startswith('#'):
-                fields = line.split()[1:]
-                if len(fields) < 2:
-                    continue
-                tag = fields[0]
-                if tag == 'TableCol':
-                    col_idx = int(fields[1])
-                    if col_idx not in tableinfo:
-                        tableinfo[col_idx] = {}
-                    tableinfo[col_idx][fields[2]] = ' '.join(fields[3:])
-                    if tableinfo[col_idx][fields[2]] == "StructName":
-                        struct_idx = col_idx
-                elif tag == "Measure":
-                    fields = ' '.join(fields).replace('CortexVol ', 'CortexVol, ').split()
-                    fields = ' '.join(fields[1:]).split(', ')
-                    measures.append({'structure': fields[0],
-                                     'name': fields[1],
-                                     'description': fields[2],
-                                     'value': fields[3],
-                                     'units': fields[4],
-                                     'source': 'Header'})
-                elif tag == "ColHeaders":
-                    if len(fields) != len(tableinfo):
-                        for idx, fieldname in enumerate(fields[1:]):
-                            if idx + 1 in tableinfo:
-                                continue
-                            tableinfo[idx + 1] = {'ColHeader': fieldname,
-                                                  'Units': 'unknown',
-                                                  'FieldName': fieldname}
-                    else:
-                        continue
-                else:
-                    header[tag] = ' '.join(fields[1:])
-            else:
-                #read values
-                row = line.split()
-                values = {}
-                measures.append({'structure': row[struct_idx-1],
-                                 'items': [],
-                                 'source': 'Table'}),
-                for idx, value in enumerate(row):
-                    if idx + 1 == struct_idx:
-                        continue
-                    measures[-1]['items'].append({
-                        'name': tableinfo[idx + 1]['ColHeader'],
-                        'description': tableinfo[idx + 1]['FieldName'],
-                        'value': value,
-                        'units': tableinfo[idx + 1]['Units'],
-                        })
-    return header, tableinfo, measures
-
 
 def test_connection(remote=False):
     """helper function to test whether an internet connection exists.
@@ -492,17 +353,50 @@ def test_connection(remote=False):
         pass
     return False
 
+def read_fsl_stats(fsl_stats_file):
+    '''
+    Reads in an FSL FIRST/FAST JSON file and converts to a measures dictionary with keys:
+    ['structure':XX, 'items': [{'name': 'NVoxels', 'description': 'Number of voxels','value':XX, 'units':'unitless'},
+                        {'name': 'Volume_mm3', 'description': ''Volume', 'value':XX, 'units':'mm^3'}]]
+    :param fsl_stats_file: path to JSON file
+    :return: measures is a list of dictionaries as defined above
+    '''
+
+    with open(fsl_stats_file) as json_file:
+        data = json.load(json_file)
+
+    measures=[]
+
+    for structure, measure_list in data.items():
+        measures.append({'structure': structure, 'items': []})
+
+        # item 1 is the NVoxels
+        measures[-1]['items'].append({
+            'name': 'NVoxels',
+            'description': 'Number of voxels',
+            'value': measure_list[0],
+            'units':'unitless'})
+        # item 2 is the Volume
+        measures[-1]['items'].append({
+            'name': 'Volume_mm3',
+            'description': 'Volume',
+            'value': measure_list[1],
+            'units': 'mm^3'})
+
+
+    return measures
+
 
 def remap2json(xlsxfile,
-               fs_stat_file,
+               fsl_stat_file,
                json_file = None,
                outfile = None,
                noscrape = False,
                force_update = False,
                ):
     """
-    Mapper to associate Freesurfer stats terms with interlex definitions.
-    Based on Freesurfer stat files (aseg.stats or aparc.stats), this function
+    Mapper to associate FSL FAST/FIRST stats terms with interlex definitions.
+    Based on FSL stat JSON files, this function
     will query ReproNimCDEs (currently an xslx file under development found at
     https://docs.google.com/spreadsheets/d/1VcpNj1deZ7dF8XM6yXt5VWCNVVQkCnV9Y48wvMFYw0g/edit#gid=1737769619)
     to return a return json mapping from the Freesurfer anatomical and statistical
@@ -510,12 +404,12 @@ def remap2json(xlsxfile,
     should an internet connection exist, it will scrape definitions for terms from
     interlex (disable with noscrape = True).
     To speed up the generation of such a mapper, either if a base-remapper already
-    exists in 'segstats_jsonld/mapping_data/freesurfermap.json' or if supplied an
+    exists in 'fsl_seg_to_nidm/fsl_seg_to_nidm/mapping_data/fslmap.json' or if supplied an
     already existing .json mapping file, the function will only check
     for yet missing terms in the stats file, and update if necessary.
 
     xslxfile: path to xslx file with ReproNimCDEs
-    fs_stat_file: Freesurfer results file, either aseg.stats or aparc.stats
+    fsl_stat_file: FSL results JSON file
     json_file: Existing json remap file from previous runs of this function ("base-remapper")
     outfilename: name for resulting json to be written to
     noscrape: Boolean. If True, no interlex scraping for definitions is returned
@@ -524,8 +418,8 @@ def remap2json(xlsxfile,
     :return:
 
     example:
-    freesurfermap = remap2json(xslxfile='ReproNimCDEs.xlsx',
-                               fs_stat_file='aseg.stats)
+    fslmap = remap2json(xslxfile='ReproNimCDEs.xlsx',
+                               fsl_stat_file='fsl_seg_to_nidm/examples/test.json')
 
     """
     import io
@@ -536,21 +430,22 @@ def remap2json(xlsxfile,
     import xlrd
     import socket
 
+    # software
+    SOFTWARE = "Mindboggle / ANTS"
     # read in the xlxs file
     xls = pd.ExcelFile(xlsxfile)
     mapping = pd.read_excel(xls, 'Subcortical Volumes', header=[0,1])
-    corticals = pd.read_excel(xls, 'Cortical Structures', header=[0,1])
 
     if not json_file:
         # creating a mapper and scraping definitions from the web is time-consuming.
         # Ideally, we want to do this only once. Therefore, we generate a base-remapper
         # that we take in as a default, and only update the definitions if none exists yet.
         try:
-            with open ('segstats_jsonld/mapping_data/freesurfermap.json') as j:
+            with open (join(os.path.dirname(os.path.realpath(__file__)),"mapping_data","fslmap.json")) as j:
                 mapper = json.load(j)
             print('Found a base-remapper. To speed up the generation of the .json'
                   'mapping file, I will use the existing one and update it, if possible')
-            json_file = 'segstats_jsonld/mapping_data/freesurfermap.json'
+            json_file = join(os.path.dirname(os.path.realpath(__file__)),"mapping_data","fslmap.json")
         except OSError as e:
             print("Could not find any base-remapper. Will generate one.")
 
@@ -573,7 +468,10 @@ def remap2json(xlsxfile,
         get_info = True
         for i, row in mapping.iterrows():
             if json_file:
-                if row['Atlas Segmentation Label'].values[0] in mapper['Anatomy'].keys():
+                # DBK added check to make sure we're only looking at Atlas Segmentation Labels for the correct
+                # software
+                if (row['Atlas Segmentation Label'].values[0] in mapper['Anatomy'].keys()) and \
+                        (row['Software'].values[0] == SOFTWARE):
                     # the term already exists in the mapper, lets check whether it has a definition
                     get_info = False
                     if mapper["Anatomy"][row['Atlas Segmentation Label'].values[0]]["definition"] == 'NA':
@@ -607,39 +505,7 @@ def remap2json(xlsxfile,
                 else:
                     definition_anat.append('NA')
 
-        definition_cort = []
-        for i, row in corticals.iterrows():
-            if json_file:
-                if row['APARC Structures - Assuming Cortical Areas (not sulci)']['Label'] in mapper['Anatomy'].keys():
-                    # the term already exists in the mapper, lets check whether it has a definition
-                    get_info = False
-                    if mapper["Anatomy"][row['APARC Structures - Assuming Cortical Areas (not sulci)']['Label']]["definition"] == 'NA':
-                        # there is no definition yet, lets try to get it
-                        get_info = True
-                        print('Checking for yet missing definition of label', row['APARC Structures - Assuming Cortical Areas (not sulci)']['Label'])
-                    else:
-                        # append existing definition
-                        if not force_update:
-                            definition_cort.append(
-                            mapper["Anatomy"][row['APARC Structures - Assuming Cortical Areas (not sulci)']['Label']]["definition"])
-            if force_update:
-                get_info = True
-            if get_info:
-                # print('getting info for', row['APARC Structures - Assuming Cortical Areas (not sulci)']['Label'])
-                if row['APARC Structures - Assuming Cortical Areas (not sulci)']['Interlex Label'] is not np.nan:
-                    url = row['APARC Structures - Assuming Cortical Areas (not sulci)']['URI'] + '.ttl'
-                    r = requests.get(url)
-                    file = io.StringIO(r.text)
-                    lines = file.readlines()
-                    for line in lines:
-                        if 'definition' in line[:14]:
-                            definition_cort.append(line.split('"')[1])
-                            break
-                        elif line == lines[-1]:
-                            # some structures do not have definitions yet, append empty strings
-                            definition_cort.append("")
-                else:
-                    definition_cort.append('NA')
+
 
     elif noscrape or not has_connection:
         # if we can't or don't want scrape, append NA and print a warning? # TODO: is that sensible?
@@ -649,31 +515,18 @@ def remap2json(xlsxfile,
         if not json_file:
             # no definitions at all
             definition_anat = [""] * len(mapping)
-            definition_cort = [""] * len(corticals)
-        else:
-            # append existing definitions from json
-            if 'Left-Lateral-Ventricle' in mapper['Anatomy'].keys():
-                definition_anat = [
-                    mapper['Anatomy'][r['Atlas Segmentation Label'].values[0]]['definition'] \
-                    for (i, r) in mapping.iterrows()
-                    ]
-                definition_anat = np.asarray(definition_anat)
-            if 'bankssts' in mapper['Anatomy'].keys():
-                definition_cort = [
-                    mapper['Anatomy'][r['APARC Structures - Assuming Cortical Areas (not sulci)']['Label']]['definition'] \
-                    for (i, r) in corticals.iterrows()
-                    ]
-                definition_cort = np.asarray(definition_cort)
 
-    assert len(definition_cort) == len(corticals)
     assert len(definition_anat) == len(mapping)
+
     # append the definitions
     mapping['definition'] = definition_anat
-    corticals['definition'] = definition_cort
     print("""Done collecting definitions.""")
     d = {}
     print("""creating json mapping from anatomicals...""")
     for i, row in mapping.iterrows():
+        # ignore row['Software'] != SOFTWARE
+        if row['Software'][0] != SOFTWARE:
+            continue
         # store missing values as empty strings, not NaNs that json can't parse
         label = row['Atlas Segmentation Label'].values[0] if row['Atlas Segmentation Label'].values[0] is not np.nan else ""
         url = row['Structure']['URI'] if row['Structure']['URI'] is not np.nan else ""
@@ -683,9 +536,9 @@ def remap2json(xlsxfile,
         # WIP: Added by DBK because I can't change the Name column or really edit the ReproNimCDEs.xlsx file at all
         # with my version of Excel (version 16.27 on Mac) without it mangling column B which is an IF statement
         # something to do with Excel so here I'm forcing the removal of "left" | "right" | "volume" from the Names
-        l=l.replace('left','')
-        l=l.replace('right','')
-        l=l.replace('volume','').strip()
+        l = l.replace('left','')
+        l = l.replace('right','')
+        l = l.replace('volume','').strip()
         d[label] = {"url": url,
                     "isAbout": isAbout,
                     "hasLaterality": hasLaterality,
@@ -694,37 +547,26 @@ def remap2json(xlsxfile,
                     "definition": row['definition'][0].replace('left','').replace('right','').replace('volume','').strip(),
                     "label": l
                     }
-    print("Done. Creating json mapping from cortical structures...")
-    for i, row in corticals.iterrows():
-        label = row['APARC Structures - Assuming Cortical Areas (not sulci)']['Label'] \
-            if row['APARC Structures - Assuming Cortical Areas (not sulci)']['Label'] is not np.nan else ""
-        url = row['APARC Structures - Assuming Cortical Areas (not sulci)']['URI'] \
-            if row['APARC Structures - Assuming Cortical Areas (not sulci)']['URI'] is not np.nan else ""
-        isAbout = row['APARC Structures - Assuming Cortical Areas (not sulci)']['Preferred'] \
-            if row['APARC Structures - Assuming Cortical Areas (not sulci)']['Preferred']  is not np.nan else ""
-        # TODO: The Laterality of the terms in aparc files is undefined yet. I think that should change
-        hasLaterality = ""
-        l = row['APARC Structures - Assuming Cortical Areas (not sulci)']['Interlex Label'] \
-            if row['APARC Structures - Assuming Cortical Areas (not sulci)']['Interlex Label'] is not np.nan else ""
-        d[label] = {"url": url,
-                    "isAbout": isAbout,
-                    "hasLaterality": hasLaterality,
-                    "definition": row['definition'][0],
-                    "label": l
-                    }
+    print("Done. Creating json mapping for anatomical structures...")
+
     # read the measures output of a of a read_stats() call. Depending on the header in the file,
     # include present measures in json
-    print("Reading in FS stat file...")
-    [header, tableinfo, measures] = read_stats(fs_stat_file)
+    print("Reading in FSL stat file...")
+    measures=read_fsl_stats(fsl_stat_file)
+
     d2 = {}
     print("""Creating measures json mapping...""")
 
-    for fi, ind1, ind2 in [(mapping, 'Atlas Segmentation Label', 0),
-                           (corticals, 'APARC Structures - Assuming Cortical Areas (not sulci)', 'Label')]:
+    for fi, ind1, ind2 in [(mapping, 'Atlas Segmentation Label', 0)]:
         for i, row in fi.iterrows():
+            # ignore row['Software'] != SOFTWARE
+            if row['Software'][0] != SOFTWARE:
+                continue
+            # get anatomical term from specific column ind1 == 'Atlas Segmentation Label' and specific
+            # row 'ind2'.
             anatomical = row[ind1][ind2]
             for c in measures:
-                if c['structure'] == anatomical:
+                if c['structure'].lower() == anatomical.lower():
                     for dic in c['items']:
                         # iterate over the list of dicts in items
                         if dic['name'] == 'normMean':
@@ -846,20 +688,20 @@ def remap2json(xlsxfile,
                 json.dump(biggie, f, indent=4)
         else:
             datapath = mapping_data.__path__[0] + '/'
-            with open(join(datapath, 'freesurfermap.json'), 'w') as f:
+            with open(join(datapath, 'fslmap.json'), 'w') as f:
                 json.dump(biggie, f, indent=4)
 
-    return [header, tableinfo, measures, biggie]
+    return [measures, biggie]
 
 
 def main():
 
     import argparse
-    parser = argparse.ArgumentParser(prog='fs_to_nidm.py',
-                                     description='''This program will load in a aseg.stats file from Freesurfer
-                                        , augment the Freesurfer anatomical region designations with common data element
+    parser = argparse.ArgumentParser(prog='fs;_seg_to_nidm.py',
+                                     description='''This program will load in JSON output from FSL's FAST/FIRST
+                                        segmentation tool, augment the FSL anatomical region designations with common data element
                                         anatomical designations, and save the statistics + region designations out as
-                                        NIDM serializations (i.e. TURTLE, JSON-LD RDF))''',
+                                        NIDM serializations (i.e. TURTLE, JSON-LD RDF)''',
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     #DBK: added mutually exclusive arguments to support pulling a named stats file (e.g. aseg.stats) as a URL such as
     #data hosted in an amazon bucket or from a mounted filesystem where you don't have access to the original
@@ -867,10 +709,10 @@ def main():
 
     group = parser.add_mutually_exclusive_group(required=True)
 
-    group.add_argument('-s', '--subject_dir', dest='subject_dir', type=str,
-                        help='Path to Freesurfer subject directory')
-    group.add_argument('-f', '--seg_file', dest='segfile', type=str,help='Path or URL to a specific Freesurfer'
-                            'stats file. Note, currently supported is aseg.stats, lh/rh.aparc.stats')
+    group.add_argument('-d', '--data_file', dest='data_file', type=str,
+                        help='Path to FSL FIRST/FAST JSON data file')
+    group.add_argument('-f', '--seg_file', dest='segfile', type=str,help='Path or URL to a specific FSL JSON'
+                            'stats file. Note, currently this is tested on ReproNim data')
     parser.add_argument('-subjid','--subjid',dest='subjid',required=False, help='If a path to a URL or a stats file'
                             'is supplied via the -f/--seg_file parameters then -subjid parameter must be set with'
                             'the subject identifier to be used in the NIDM files')
@@ -900,70 +742,57 @@ def main():
     #datapath = mapping_data.__path__._path[0] + '/'
     # changed by DBK
     datapath = mapping_data.__path__[0] + '/'
-    # WIP: For right now we're only converting aseg.stats but ultimately we'll want to do this for all stats files
-    supported_files=['aseg.stats','lh.aparc.stats','rh.aparc.stats']
 
     # if we set -s or --subject_dir as parameter on command line...
-    if args.subject_dir is not None:
-        # get the freesurfer version for later use
-        freesurfer_version = read_buildstamp(args.subject_dir)
-        # files=['aseg.stats']
-        for stats_file in glob.glob(os.path.join(args.subject_dir,"stats","*.stats")):
-            if basename(stats_file) in supported_files:
-                #if user added -jmap parameter
-                if args.json_map is not False:
-                    #read in stats file
-                    [header,tableinfo, measures] = read_stats(stats_file)
-                else:
-                    # online scraping of InterLex for anatomy CDEs and stats file reading
-                    [header, tableinfo, measures,json_map] = remap2json(xlsxfile=join(datapath,'ReproNimCDEs.xlsx'),
-                                 fs_stat_file=os.path.join(args.subject_dir,"stats",stats_file))
+    if args.data_file is not None:
+
+        #if user added -jmap parameter
+        if args.json_map is not False:
+            #read in stats file
+            tableinfo = json.load(args.data_file)
+        else:
+            # online scraping of InterLex for anatomy CDEs and stats file reading
+            [measures,json_map] = remap2json(xlsxfile=join(datapath,'ReproNimCDEs.xlsx'),
+                                 fsl_stat_file=args.data_file,outfile=join(os.path.dirname(os.path.realpath(__file__)),"mapping_data","fslmap.json"))
 
 
-                # for measures we need to create NIDM structures using anatomy mappings
-                # If user has added an existing NIDM file as a command line parameter then add to existing file for subjects who exist in the NIDM file
-                if args.nidm_file is None:
+        # for measures we need to create NIDM structures using anatomy mappings
+        # If user has added an existing NIDM file as a command line parameter then add to existing file for subjects who exist in the NIDM file
+        if args.nidm_file is None:
 
-                    print("Creating NIDM file...")
-                    # If user did not choose to add this data to an existing NIDM file then create a new one for the CSV data
+            print("Creating NIDM file...")
+            # If user did not choose to add this data to an existing NIDM file then create a new one for the CSV data
 
-                    # create an empty NIDM graph
-                    nidmdoc = Core()
+            # create an empty NIDM graph
+            nidmdoc = Core()
 
-                    # print(nidmdoc.serializeTurtle())
+            # print(nidmdoc.serializeTurtle())
 
-                    # WIP: more thought needed for version that works with adding to existing NIDM file versus creating a new NIDM file....
-                    add_seg_data(nidmdoc=nidmdoc,measure=measures,header=header, json_map=json_map)
+            # add seg data to new NIDM file
+            add_seg_data(nidmdoc=nidmdoc,measure=measures,json_map=json_map)
 
-                    #serialize NIDM file
-                    if args.jsonld is not False:
-                        with open(join(args.output_dir,splitext(basename(stats_file))[0]+'.json'),'w') as f:
-                            print("Writing NIDM file...")
-                            f.write(nidmdoc.serializeJSONLD())
-                    else:
-                        with open(join(args.output_dir,splitext(basename(stats_file))[0]+'.ttl'),'w') as f:
-                            print("Writing NIDM file...")
-                            f.write(nidmdoc.serializeTurtle())
+            #serialize NIDM file
+            if args.jsonld is not False:
+                with open(join(args.output_dir,splitext(basename(args.data_file))[0]+'.json'),'w') as f:
+                    print("Writing NIDM file...")
+                    f.write(nidmdoc.serializeJSONLD())
+            else:
+                with open(join(args.output_dir,splitext(basename(args.data_file))[0]+'.ttl'),'w') as f:
+                    print("Writing NIDM file...")
+                    f.write(nidmdoc.serializeTurtle())
 
-                    nidmdoc.save_DotGraph(join(args.output_dir,splitext(basename(stats_file))[0] + ".pdf"), format="pdf")
+            nidmdoc.save_DotGraph(join(args.output_dir,splitext(basename(args.data_file))[0] + ".pdf"), format="pdf")
 
     # else if the user didn't set subject_dir on command line then they must have set a segmentation file directly
     elif args.segfile is not None:
+
+        #WIP: FSL URL form: https://fcp-indi.s3.amazonaws.com/data/Projects/ABIDE/Outputs/mindboggle_swf/simple_workflow/sub-0050002/segstats.json
 
         # here we're supporting amazon bucket-style file URLs where the expectation is the last parameter of the
         # see if we have a valid url
         url = url_validator(args.segfile)
         # if user supplied a url as a segfile
         if url is not False:
-
-            # check to see if the supplied segfile is in supported_files
-            if not any(ext in args.segfile for ext in supported_files):
-                print("ERROR! Only Freesurfer stats files currently supported are: \n")
-                print(supported_files)
-                print("You supplied to following URL which must contain the string from one of the supported files: %s " %args.segfile)
-                exit()
-
-
 
             #try to open the url and get the pointed to file
             try:
