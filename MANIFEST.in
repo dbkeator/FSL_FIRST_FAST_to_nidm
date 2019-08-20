@@ -1,2 +1,2 @@
-include segstats_jsonld/mapping_data/*
-include segstats_jsonld/tests/testdata/*
+include fsl_seg_to_nidm/mapping_data/*
+# include segstats_jsonld/tests/testdata/*
