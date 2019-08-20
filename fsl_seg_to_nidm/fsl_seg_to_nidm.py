@@ -77,7 +77,7 @@ def url_validator(url):
     except:
         return False
 
-def add_seg_data(nidmdoc, measure, json_map, png_file=None, output_file=None, root_act=None, nidm_graph=None,subjid=None):
+def add_seg_data(nidmdoc, measure, json_map, subjid, png_file=None, output_file=None, root_act=None, nidm_graph=None):
     '''
     WIP: this function creates a NIDM file of brain volume data and if user supplied a NIDM-E file it will add brain volumes to the
     NIDM-E file for the matching subject ID
@@ -109,7 +109,14 @@ def add_seg_data(nidmdoc, measure, json_map, png_file=None, output_file=None, ro
             prov.PROV_TYPE:prov.PROV["SoftwareAgent"]} )
         #create qualified association with brain volume computation activity
         nidmdoc.graph.association(activity=software_activity,agent=software_agent,other_attributes={PROV_ROLE:Constants.NIDM_NEUROIMAGING_ANALYSIS_SOFTWARE})
-        nidmdoc.graph.wasAssociatedWith(activity=software_activity,agent=software_agent)
+        # nidmdoc.graph.wasAssociatedWith(activity=software_activity,agent=software_agent)
+
+        # create agent for participant
+        subj_agent = nidmdoc.graph.agent(niiri[getUUID()],other_attributes={
+           Constants.NIDM_SUBJECTID:subjid} )
+        # create qualified associaton with brain volume computation activity
+        nidmdoc.graph.association(activity=software_activity,agent=subj_agent,other_attributes={PROV_ROLE:Constants.NIDM_PARTICIPANT})
+        # nidmdoc.graph.wasAssociatedWith(activity=software_activity,agent=subje_agent)
 
 
 
@@ -125,7 +132,7 @@ def add_seg_data(nidmdoc, measure, json_map, png_file=None, output_file=None, ro
         #datum_entity=nidmdoc.graph.entity(QualifiedName(provNamespace("niiri",Constants.NIIRI),getUUID()),other_attributes={
         datum_entity=nidmdoc.graph.entity(niiri[getUUID()],other_attributes={
                     prov.PROV_TYPE:QualifiedName(provNamespace("nidm","http://purl.org/nidash/nidm#"),"FSLStatsCollection")})
-        nidmdoc.graph.wasGeneratedBy(software_activity,datum_entity)
+        nidmdoc.graph.wasGeneratedBy(datum_entity,software_activity)
 
         #iterate over measure dictionary where measures are the lines in the FS stats files which start with '# Measure' and
         #the whole table at the bottom of the FS stats file that starts with '# ColHeaders
@@ -728,8 +735,8 @@ def main():
 
     # test whether user supplied stats file directly and if so they the subject id must also be supplied so we
     # know which subject the stats file is for
-    if args.segfile and (args.subjid is None):
-        parser.error("-f/--seg_file requires -subjid/--subjid to be set!")
+    if (args.segfile and (args.subjid is None)) or (args.data_file and (args.subjid is None)):
+        parser.error("-f/--seg_file and -d/--data_file requires -subjid/--subjid to be set!")
 
 
     #if user supplied json mapping file
@@ -769,7 +776,7 @@ def main():
             # print(nidmdoc.serializeTurtle())
 
             # add seg data to new NIDM file
-            add_seg_data(nidmdoc=nidmdoc,measure=measures,json_map=json_map)
+            add_seg_data(nidmdoc=nidmdoc,measure=measures,json_map=json_map,subjid=args.subjid)
 
             #serialize NIDM file
             if args.jsonld is not False:
