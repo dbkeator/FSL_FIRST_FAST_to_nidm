@@ -184,7 +184,7 @@ def add_seg_data(nidmdoc, measure, json_map, subjid, png_file=None, output_file=
                         # if isAbout isn't empty then store as an attribute
                         if json_map['Anatomy'][measures["structure"]]['isAbout'] != "" :
                             isabout_parts = json_map['Anatomy'][measures["structure"]]['isAbout'].rsplit('/',1)
-                            obo = prov.Namespace("obo",isabout_parts[0])
+                            obo = prov.Namespace("obo",isabout_parts[0]+'/')
                             region_entity.add_attributes({QualifiedName(provNamespace("isAbout","http://uri.interlex.org/ilx_0381385#"),""):obo[isabout_parts[1]]})
 
 
@@ -209,6 +209,10 @@ def add_seg_data(nidmdoc, measure, json_map, subjid, png_file=None, output_file=
                                 measureOf[measureOf_parts[1]], QualifiedName(provNamespace("hasDatumType","http://uri.interlex.org/ilx_0738262#"),""):
                                 datumType[datumType_parts[1]]})
 
+                        # if this measure has a unit then use it
+                        if "hasUnit" in  json_map['Measures'][items['name']]:
+                            unit_parts = json_map['Measures'][items['name']]["hasUnit"].rsplit('/',1)
+                            region_entity.add_attributes({QualifiedName(provNamespace("hasUnit","http://uri.interlex.org/base/ilx_0112181"),""):ilk[unit_parts[1]]})
 
                         # region_entity.add_attributes({QualifiedName(provNamespace("hasMeasurementType","http://uri.interlex.org/ilx_0381388#"),""):
                         #        json_map['Measures'][items['name']]["measureOf"], QualifiedName(provNamespace("hasDatumType","http://uri.interlex.org/ilx_0738262#"),""):
@@ -365,7 +369,7 @@ def add_seg_data(nidmdoc, measure, json_map, subjid, png_file=None, output_file=
                                     # if isAbout isn't empty then store as an attribute
                                     if json_map['Anatomy'][measures["structure"]]['isAbout'] != "":
                                         isabout_parts = json_map['Anatomy'][measures["structure"]]['isAbout'].rsplit('/',1)
-                                        obo = Namespace(isabout_parts[0])
+                                        obo = Namespace(isabout_parts[0]+'/')
                                         nidm_graph.bind("obo",obo)
                                         nidm_graph.add((region_entity,URIRef(isAbout),obo[isabout_parts[1]]))
 
@@ -416,6 +420,11 @@ def add_seg_data(nidmdoc, measure, json_map, subjid, png_file=None, output_file=
 
                                     # nidm_graph.add((region_entity,URIRef(hasMeasurementType),URIRef(json_map['Measures'][items['name']]["measureOf"])))
                                     # nidm_graph.add((region_entity,URIRef(hasDatumType),URIRef(json_map['Measures'][items['name']]["datumType"])))
+
+                                    # if this measure has a unit then use it
+                                    if "hasUnit" in  json_map['Measures'][items['name']]:
+                                        unit_parts = json_map['Measures'][items['name']]["hasUnit"].rsplit('/',1)
+                                        nidm_graph.add((region_entity,URIRef(hasUnit),ilk[unit_parts[1]]))
 
                                 #create prefixes for measurement_datum objects for easy reading
                                 #nidm_graph.bind(Core.safe_string(Core,string=json_map['Anatomy'][measures["structure"]]['label']),region_entity)
@@ -678,12 +687,14 @@ def remap2json(xlsxfile,
                         if dic['name'] == 'NVoxels':
                             d2['NVoxels'] = {
                                         "measureOf": 'http://uri.interlex.org/base/ilx_0112568',
-                                        "datumType": 'http://uri.interlex.org/base/ilx_0102597'
+                                        "datumType": 'http://uri.interlex.org/base/ilx_0102597',
+                                        "hasUnit": 'http://uri.interlex.org/base/ilx_0112568'
                                         }
                         if dic['name'] == 'Volume_mm3':
                             d2['Volume_mm3'] = {
                                         "measureOf": 'http://uri.interlex.org/base/ilx_0112559',
-                                        "datumType": 'http://uri.interlex.org/base/ilx_0738276'
+                                        "datumType": 'http://uri.interlex.org/base/ilx_0738276',
+                                        "hasUnit": 'http://uri.interlex.org/base/ilx_0381383'
                                         }
                         if dic['name'] == 'normMin':
                             d2['normMin'] = {
@@ -707,7 +718,7 @@ def remap2json(xlsxfile,
                                         }
                         if dic['name'] == 'GrayVol':
                             d2['GrayVol'] = {
-                                        "measureOf": 'http://uri.interlex.org/base/ilx_0112559',  # volume
+                                        "measureOf": 'http://uri.interlex.org/base/ilx_0112559', # volume
                                         "datumType": 'http://uri.interlex.org/base/ilx_0738276' #scalar
                                         }
                         if dic['name'] == 'ThickAvg':
