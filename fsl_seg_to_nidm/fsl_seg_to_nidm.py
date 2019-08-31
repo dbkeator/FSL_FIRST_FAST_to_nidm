@@ -197,14 +197,14 @@ def add_seg_data(nidmdoc, measure, json_map, subjid, png_file=None, output_file=
 
                         # if both measureOf and datumType have the same scheme+domain then set a "ilk" prefix for that
                         if measureOf_parts[0] == datumType_parts[0]:
-                            ilk = prov.Namespace("ilk",measureOf_parts[0])
+                            ilk = prov.Namespace("ilk",measureOf_parts[0] + '/')
                             region_entity.add_attributes({QualifiedName(provNamespace("hasMeasurementType","http://uri.interlex.org/ilx_0381388#"),""):
                                 ilk[measureOf_parts[1]], QualifiedName(provNamespace("hasDatumType","http://uri.interlex.org/ilx_0738262#"),""):
                                 ilk[datumType_parts[1]]})
                         # if not then we'll add 2 separate prefixes
                         else:
-                            measureOf = prov.Namespace("measureOf",measureOf_parts[0])
-                            datumType = prov.Namespace("datumType",datumType_parts[0])
+                            measureOf = prov.Namespace("measureOf",measureOf_parts[0] + '/')
+                            datumType = prov.Namespace("datumType",datumType_parts[0] + '/')
                             region_entity.add_attributes({QualifiedName(provNamespace("hasMeasurementType","http://uri.interlex.org/ilx_0381388#"),""):
                                 measureOf[measureOf_parts[1]], QualifiedName(provNamespace("hasDatumType","http://uri.interlex.org/ilx_0738262#"),""):
                                 datumType[datumType_parts[1]]})
@@ -212,7 +212,7 @@ def add_seg_data(nidmdoc, measure, json_map, subjid, png_file=None, output_file=
                         # if this measure has a unit then use it
                         if "hasUnit" in  json_map['Measures'][items['name']]:
                             unit_parts = json_map['Measures'][items['name']]["hasUnit"].rsplit('/',1)
-                            region_entity.add_attributes({QualifiedName(provNamespace("hasUnit","http://uri.interlex.org/base/ilx_0112181"),""):json_map['Measures'][items['name']]["hasUnit"]})
+                            region_entity.add_attributes({QualifiedName(provNamespace("hasUnit","http://uri.interlex.org/base/ilx_0112181#"),""):json_map['Measures'][items['name']]["hasUnit"]})
 
                         # region_entity.add_attributes({QualifiedName(provNamespace("hasMeasurementType","http://uri.interlex.org/ilx_0381388#"),""):
                         #        json_map['Measures'][items['name']]["measureOf"], QualifiedName(provNamespace("hasDatumType","http://uri.interlex.org/ilx_0738262#"),""):
@@ -395,6 +395,8 @@ def add_seg_data(nidmdoc, measure, json_map, subjid, png_file=None, output_file=
                                     nidm_graph.bind("hasMeasurementType",hasMeasurementType)
                                     hasDatumType = Namespace("http://uri.interlex.org/ilx_0738262#")
                                     nidm_graph.bind("hasDatumType",hasDatumType)
+                                    hasUnit = Namespace("http://uri.interlex.org/base/ilx_0112181#")
+                                    nidm_graph.bind("hasUnit",hasUnit)
 
                                      # DBK: Added to convert measureOf and datumType URLs to qnames
                                     measureOf_parts = json_map['Measures'][items['name']]["measureOf"].rsplit('/',1)
@@ -402,16 +404,16 @@ def add_seg_data(nidmdoc, measure, json_map, subjid, png_file=None, output_file=
 
                                     # if both measureOf and datumType have the same scheme+domain then set a "ilk" prefix for that
                                     if measureOf_parts[0] == datumType_parts[0]:
-                                        ilk = Namespace(measureOf_parts[0])
+                                        ilk = Namespace(measureOf_parts[0] + '/')
                                         nidm_graph.bind("ilk",ilk)
                                         nidm_graph.add((region_entity,URIRef(hasMeasurementType),ilk[measureOf_parts[1]]))
                                         nidm_graph.add((region_entity,URIRef(hasDatumType),ilk[datumType_parts[1]]))
 
                                     # if not then we'll add 2 separate prefixes
                                     else:
-                                        measureOf = Namespace(measureOf_parts[0])
+                                        measureOf = Namespace(measureOf_parts[0] + '/')
                                         nidm_graph.bind("measureOf",measureOf)
-                                        datumType = Namespace(datumType_parts[0])
+                                        datumType = Namespace(datumType_parts[0] + '/')
                                         nidm_graph.bind("datumType",datumType)
 
                                         region_entity.add_attributes({QualifiedName(provNamespace("hasMeasurementType","http://uri.interlex.org/ilx_0381388#"),""):
@@ -541,8 +543,16 @@ def remap2json(xlsxfile,
             print('Found a base-remapper. To speed up the generation of the .json'
                   'mapping file, I will use the existing one and update it, if possible')
             json_file = join(os.path.dirname(os.path.realpath(__file__)),"mapping_data","fslmap.json")
+
+           # with open ('fsl_seg_to_nidm/mapping_data/fslmap.json') as j:
+           #     mapper = json.load(j)
+           # print('Found a base-remapper. To speed up the generation of the .json'
+           #       'mapping file, I will use the existing one and update it, if possible')
+           # json_file = 'fsl_seg_to_nidm/mapping_data/fslmap.json'
+
         except OSError as e:
             print("Could not find any base-remapper. Will generate one.")
+            outfile = join(os.path.dirname(os.path.realpath(__file__)),"mapping_data","fslmap.json")
 
     if json_file:
         # if we have a user-supplied json mapper, check whats inside and only append new stuff
@@ -853,8 +863,11 @@ def main():
             tableinfo = json.load(args.data_file)
         else:
             # online scraping of InterLex for anatomy CDEs and stats file reading
+            # [measures,json_map] = remap2json(xlsxfile=join(datapath,'ReproNimCDEs.xlsx'),
+            #                     fsl_stat_file=args.data_file,outfile=join(os.path.dirname(os.path.realpath(__file__)),"mapping_data","fslmap.json"))
+
             [measures,json_map] = remap2json(xlsxfile=join(datapath,'ReproNimCDEs.xlsx'),
-                                 fsl_stat_file=args.data_file,outfile=join(os.path.dirname(os.path.realpath(__file__)),"mapping_data","fslmap.json"))
+                                 fsl_stat_file=args.data_file)
 
 
         # for measures we need to create NIDM structures using anatomy mappings
