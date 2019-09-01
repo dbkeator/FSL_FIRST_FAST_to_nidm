@@ -53,6 +53,7 @@ import prov.model as prov
 import json
 import urllib.request as ur
 from urllib.parse import urlparse
+import re
 
 from rdflib import Graph, RDF, URIRef, util, term,Namespace,Literal,BNode
 
@@ -354,6 +355,7 @@ def add_seg_data(nidmdoc, measure, json_map, subjid, png_file=None, output_file=
                                     # nothing found so create
                                     # print("measurement datum entity not found, creating...")
                                     region_entity=URIRef(niiri[getUUID()])
+
                                     measurement_datum = Namespace("http://uri.interlex.org/base/ilx_0738269#")
                                     nidm_graph.bind("measurement_datum",measurement_datum)
 
@@ -431,6 +433,10 @@ def add_seg_data(nidmdoc, measure, json_map, subjid, png_file=None, output_file=
                                 #nidm_graph.bind(Core.safe_string(Core,string=json_map['Anatomy'][measures["structure"]]['label']),region_entity)
 
                                 nidm_graph.add((datum_entity,region_entity,Literal(items['value'])))
+
+                                # testing
+                                #nidm_graph.serialize(destination="/Users/dbkeator/Downloads/test_fsl_add.ttl",format='turtle')
+                                #print("output testing TTL file...")
 
 
 
