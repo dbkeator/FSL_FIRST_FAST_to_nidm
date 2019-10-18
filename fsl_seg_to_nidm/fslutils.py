@@ -3,11 +3,22 @@ import json
 from pathlib import Path
 import os
 
-from .fsutils import hemiless
 
 FSL = namedtuple("FSL", ["structure", "hemi", "measure", "unit"])
 cde_file = Path(os.path.dirname(__file__)) / "mapping_data" / "fsl-cde.json"
 map_file = Path(os.path.dirname(__file__)) / "mapping_data" / "fslmap.json"
+
+def hemiless(key):
+    return (
+        key.replace("-lh-", "-")
+        .replace("-rh-", "-")
+        .replace("_lh_", "-")
+        .replace("_rh_", "-")
+        .replace("rh", "")
+        .replace("lh", "")
+        .replace("Left-", "")
+        .replace("Right-", "")
+    )
 
 
 def read_fsl_stats(stat_file):
