@@ -304,7 +304,7 @@ def main():
                 print("ERROR! Can't open stats file: %s " %args.segfile)
                 exit()
 
-        measures =read_fsl_stats(args.data_file)
+        measures =read_fsl_stats(stats_file)
         [e, doc] = convert_stats_to_nidm(measures)
         g = create_cde_graph()
 
