@@ -11,6 +11,5 @@ from __future__ import absolute_import
 __version__ = '0.0.1'
 
 # do imports of all of the functions that should be available here
-from .fsl_seg_to_nidm import (remap2json,
-                         read_fsl_stats,
+from .fsl_seg_to_nidm import (
                          add_seg_data)
