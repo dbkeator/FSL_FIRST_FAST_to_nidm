@@ -56,7 +56,7 @@ from urllib.parse import urlparse
 import re
 
 from rdflib import Graph, RDF, URIRef, util, term,Namespace,Literal,BNode
-from fslutils import read_fsl_stats, convert_stats_to_nidm, create_cde_graph
+from fsl_seg_to_nidm.fslutils import read_fsl_stats, convert_stats_to_nidm, create_cde_graph
 from io import StringIO
 
 import tempfile
