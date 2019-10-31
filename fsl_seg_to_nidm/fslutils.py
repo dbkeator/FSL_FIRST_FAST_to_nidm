@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import os
 
+# from .fsutils import hemiless
 
 FSL = namedtuple("FSL", ["structure", "hemi", "measure", "unit"])
 cde_file = Path(os.path.dirname(__file__)) / "mapping_data" / "fsl-cde.json"
@@ -121,6 +122,8 @@ def create_cde_graph(restrict_to=None):
                 item = fsl[item.replace("fsl:", "")]
             if subkey in ["isAbout", "datumType", "measureOf"]:
                 g.add((fsl[fslid], nidm[subkey], rl.URIRef(item)))
+            elif subkey in ["hasUnit"]:
+                g.add((fsl[fslid], nidm[subkey], rl.Literal(item)))
             else:
                 if isinstance(item, rl.URIRef):
                     g.add((fsl[fslid], fsl[subkey], item))
