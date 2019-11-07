@@ -56,7 +56,7 @@ from urllib.parse import urlparse
 import re
 
 from rdflib import Graph, RDF, URIRef, util, term,Namespace,Literal,BNode
-from fsl_seg_to_nidm.fslutils import read_fsl_stats, convert_stats_to_nidm, create_cde_graph
+from fslutils import read_fsl_stats, convert_stats_to_nidm, create_cde_graph
 from io import StringIO
 
 import tempfile
@@ -75,7 +75,7 @@ def url_validator(url):
     except:
         return False
 
-def add_seg_data(nidmdoc,subjid,fs_stats_entity_id, add_to_nidm=False):
+def add_seg_data(nidmdoc,subjid,fs_stats_entity_id, add_to_nidm=False, forceagent=False):
     '''
     WIP: this function creates a NIDM file of brain volume data and if user supplied a NIDM-E file it will add brain volumes to the
     NIDM-E file for the matching subject ID
@@ -89,7 +89,11 @@ def add_seg_data(nidmdoc,subjid,fs_stats_entity_id, add_to_nidm=False):
     #for each of the header items create a dictionary where namespaces are freesurfer
     niiri=Namespace("http://iri.nidash.org/")
     nidmdoc.bind("niiri",niiri)
-
+    # add namespace for subject id
+    ndar = Namespace(Constants.NDAR)
+    nidmdoc.bind("ndar",ndar)
+    dct = Namespace(Constants.DCT)
+    nidmdoc.bind("dct",dct)
 
 
     software_activity = niiri[getUUID()]
@@ -117,6 +121,7 @@ def add_seg_data(nidmdoc,subjid,fs_stats_entity_id, add_to_nidm=False):
     nidmdoc.add((association_bnode,Constants.PROV['wasAssociatedWith'],software_agent))
 
     if not add_to_nidm:
+
         # create a new agent for subjid
         participant_agent = niiri[getUUID()]
         nidmdoc.add((participant_agent,RDF.type,Constants.PROV['Agent']))
@@ -141,8 +146,15 @@ def add_seg_data(nidmdoc,subjid,fs_stats_entity_id, add_to_nidm=False):
             #print(query)
             qres = nidmdoc.query(query)
             if len(qres) == 0:
-                print('Subject ID (%s) was not found in existing NIDM file.  No output written...' %subjid)
-                exit()
+                print('Subject ID (%s) was not found in existing NIDM file....' %subjid)
+                if forceagent is not False:
+                    print('Explicitly creating agent in existing NIDM file...')
+                    participant_agent = niiri[getUUID()]
+                    nidmdoc.add((participant_agent,RDF.type,Constants.PROV['Agent']))
+                    nidmdoc.add((participant_agent,URIRef(Constants.NIDM_SUBJECTID.uri),Literal(subjid)))
+                else:
+                    print('Not explicitly adding agent to NIDM file, no output written')
+                    exit()
             else:
                  for row in qres:
                     print('Found subject ID: %s in NIDM file (agent: %s)' %(subjid,row[0]))
@@ -206,6 +218,10 @@ def main():
                         help='If flag set then NIDM file will be written as JSONLD instead of TURTLE')
     parser.add_argument('-n','--nidm', dest='nidm_file', type=str, required=False,
                         help='Optional NIDM file to add segmentation data to.')
+    parser.add_argument('-forcenidm','--forcenidm', action='store_true',required=False,
+                        help='If adding to NIDM file this parameter forces the data to be added even if the participant'
+                             'doesnt currently exist in the NIDM file.')
+
     args = parser.parse_args()
 
     # test whether user supplied stats file directly and if so they the subject id must also be supplied so we
@@ -266,7 +282,10 @@ def main():
 
             nidmdoc = g + g1 + g2
 
-            add_seg_data(nidmdoc=nidmdoc,subjid=args.subjid,fs_stats_entity_id=e.identifier,add_to_nidm=True)
+            if args.forcenidm is not None:
+                add_seg_data(nidmdoc=nidmdoc,subjid=args.subjid,fs_stats_entity_id=e.identifier,add_to_nidm=True, forceagent=True)
+            else:
+                add_seg_data(nidmdoc=nidmdoc,subjid=args.subjid,fs_stats_entity_id=e.identifier,add_to_nidm=True)
 
 
             #serialize NIDM file
@@ -362,7 +381,10 @@ def main():
 
             nidmdoc = g + g1 + g2
 
-            add_seg_data(nidmdoc=nidmdoc,subjid=args.subjid,fs_stats_entity_id=e.identifier,add_to_nidm=True)
+            if args.forcenidm is not None:
+                add_seg_data(nidmdoc=nidmdoc,subjid=args.subjid,fs_stats_entity_id=e.identifier,add_to_nidm=True, forceagent=True)
+            else:
+                add_seg_data(nidmdoc=nidmdoc,subjid=args.subjid,fs_stats_entity_id=e.identifier,add_to_nidm=True)
 
 
             #serialize NIDM file
