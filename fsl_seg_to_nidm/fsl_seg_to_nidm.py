@@ -45,7 +45,7 @@ from prov.model import Namespace as provNamespace
 # standard library
 from pickle import dumps
 import os
-from os.path import join,basename,splitext,isfile
+from os.path import join,basename,splitext,isfile,dirname
 from socket import getfqdn
 import glob
 
@@ -218,6 +218,10 @@ def main():
                         help='Output filename with full path', required=True)
     parser.add_argument('-j', '--jsonld', dest='jsonld', action='store_true', default = False,
                         help='If flag set then NIDM file will be written as JSONLD instead of TURTLE')
+    parser.add_argument('-add_de', '--add_de', dest='add_de', action='store_true', default = None,
+                        help='If flag set then data element data dictionary will be added to nidm file else it will written to a'
+                            'separate file as fsl_cde.ttl in the output directory (or same directory as nidm file if -n paramemter'
+                            'is used.')
     parser.add_argument('-n','--nidm', dest='nidm_file', type=str, required=False,
                         help='Optional NIDM file to add segmentation data to.')
     parser.add_argument('-forcenidm','--forcenidm', action='store_true',required=False,
@@ -256,7 +260,10 @@ def main():
             g2 = Graph()
             g2.parse(source=StringIO(doc.serialize(format='rdf',rdf_format='turtle')),format='turtle')
 
-            nidmdoc = g+g2
+            if args.add_de is not None:
+                nidmdoc = g+g2
+            else:
+                nidmdoc = g2
 
             # print(nidmdoc.serializeTurtle())
 
@@ -271,6 +278,10 @@ def main():
             else:
                 # nidmdoc.serialize(destination=join(args.output_dir,splitext(basename(args.data_file))[0]+'.ttl'),format='turtle')
                 nidmdoc.serialize(destination=join(args.output_dir),format='turtle')
+            # added to support separate cde serialization
+            if args.add_de is None:
+                # serialize cde graph
+                g.serialize(destination=join(dirname(args.output_dir),"fsl_cde.ttl"),format='turtle')
 
         # we adding these data to an existing NIDM file
         else:
@@ -282,7 +293,11 @@ def main():
             g2 = Graph()
             g2.parse(source=StringIO(doc.serialize(format='rdf',rdf_format='turtle')),format='turtle')
 
-            nidmdoc = g + g1 + g2
+            if args.add_de is not None:
+                print("Combining graphs...")
+                nidmdoc = g + g1 + g2
+            else:
+                nidmdoc = g1 + g2
 
             if args.forcenidm is not False:
                 add_seg_data(nidmdoc=nidmdoc,subjid=args.subjid,fs_stats_entity_id=e.identifier,add_to_nidm=True, forceagent=True)
@@ -297,6 +312,9 @@ def main():
             else:
                 nidmdoc.serialize(destination=args.nidm_file,format='turtle')
 
+            if args.add_de is None:
+                # serialize cde graph
+                g.serialize(destination=join(dirname(args.output_dir),"fsl_cde.ttl"),format='turtle')
 
     # else if the user didn't set subject_dir on command line then they must have set a segmentation file directly
     elif args.segfile is not None:
@@ -354,7 +372,10 @@ def main():
             g2 = Graph()
             g2.parse(source=StringIO(doc.serialize(format='rdf',rdf_format='turtle')),format='turtle')
 
-            nidmdoc = g+g2
+            if args.add_de is not None:
+                nidmdoc = g+g2
+            else:
+                nidmdoc = g2
 
             # print(nidmdoc.serializeTurtle())
 
@@ -370,7 +391,12 @@ def main():
                 # nidmdoc.serialize(destination=join(args.output_dir,splitext(basename(args.data_file))[0]+'.ttl'),format='turtle')
                 nidmdoc.serialize(destination=join(args.output_dir),format='turtle')
 
-            #nidmdoc.save_DotGraph(join(args.output_dir,output_filename + ".pdf"), format="pdf")
+            # added to support separate cde serialization
+            if args.add_de is None:
+                # serialize cde graph
+                g.serialize(destination=join(dirname(args.output_dir),"fsl_cde.ttl"),format='turtle')
+
+
         # we adding these data to an existing NIDM file
         else:
            #read in NIDM file with rdflib
@@ -381,7 +407,11 @@ def main():
             g2 = Graph()
             g2.parse(source=StringIO(doc.serialize(format='rdf',rdf_format='turtle')),format='turtle')
 
-            nidmdoc = g + g1 + g2
+            if args.add_de is not None:
+                print("Combining graphs...")
+                nidmdoc = g + g1 + g2
+            else:
+                nidmdoc = g1 + g2
 
             if args.forcenidm is not False:
                 add_seg_data(nidmdoc=nidmdoc,subjid=args.subjid,fs_stats_entity_id=e.identifier,add_to_nidm=True, forceagent=True)
@@ -396,7 +426,9 @@ def main():
             else:
                 nidmdoc.serialize(destination=args.nidm_file,format='turtle')
 
-
+            if args.add_de is None:
+                # serialize cde graph
+                g.serialize(destination=join(dirname(args.output_dir),"fsl_cde.ttl"),format='turtle')
 
 if __name__ == "__main__":
     main()
