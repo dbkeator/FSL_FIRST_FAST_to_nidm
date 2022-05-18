@@ -236,7 +236,7 @@ def test_connection(remote=False):
 def main():
 
     import argparse
-    parser = argparse.ArgumentParser(prog='fs;_seg_to_nidm.py',
+    parser = argparse.ArgumentParser(prog='fsl_seg_to_nidm.py',
                                      description='''This program will load in JSON output from FSL's FAST/FIRST
                                         segmentation tool, augment the FSL anatomical region designations with common data element
                                         anatomical designations, and save the statistics + region designations out as
