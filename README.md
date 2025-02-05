@@ -38,7 +38,7 @@ $ python setup.py install
 You can get information about how to run this tool by executing:
 ```
 $ fslsegstats2nidm --help
-usage: fs;_seg_to_nidm.py [-h] (-d DATA_FILE | -f SEGFILE) -subjid SUBJID -o
+usage: fslsegstats2nidm.py [-h] (-d DATA_FILE | -f SEGFILE) -subjid SUBJID -o
                           OUTPUT_DIR [-j] [-add_de] [-n NIDM_FILE]
                           [-forcenidm]
 
@@ -73,4 +73,23 @@ options:
                         If adding to NIDM file this parameter forces the data
                         to be added even if the participantdoesnt currently
                         exist in the NIDM file.
+```
+FSL data is ready to annotate if you ran both FSL FIRST and FAST using a reproducible container (https://pubmed.ncbi.nlm.nih.gov/28781753/, https://github.com/ReproNim/simple_workflow). If FIRST and FAST were run out-of-the-box, use the fsl2jon.py script in the root of this project directory to generate the segstats.json files. For example:
+
+```
+python fsl2json.py root_of_fsl_derivatives_directroy
+```
+e.g.
+```
+python fsl2json.py ~/Desktop/proj/derivatives/fsl/  
+```
+Note: To run this script FSL needs to be locally installed.
+
+Next, generate annotated FSL data with the following command:
+```
+fslsegstats2nidm -add_de -d segstat_file -subjid sub-01 -o output 
+```
+e.g.
+```
+fslsegstats2nidm -add_de -d ./proj/derivatives/fsl/sub-01/segstats.json -subjid sub-01 -o ./proj/derivatives/fsl/sub-01/fsl_nidm.ttl 
 ```
